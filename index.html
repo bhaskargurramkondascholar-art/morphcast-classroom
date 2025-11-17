@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MorphCast Classroom Emotion Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .debug-panel {
+            background: #fff3cd;
+            border: 3px solid #ffc107;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .debug-panel h2 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .debug-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .debug-status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .debug-status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .debug-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .debug-status.waiting {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 10px 5px;
+        }
+        
+        .status-badge.active {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-badge.stopped {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-badge.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .face-detection-alert {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .face-detection-alert.show {
+            display: block;
+        }
+
+        .face-detection-alert.success {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .data-item {
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .data-label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .data-value {
+            color: #667eea;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+        
+        .emotion-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .emotion-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        
+        .controls {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        
+        button:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .download-btn {
+            background: #28a745;
+        }
+        
+        .download-btn:hover:not(:disabled) {
+            background: #218838;
+        }
+
+        .restart-btn {
+            background: #ff9800;
+        }
+
+        .restart-btn:hover:not(:disabled) {
+            background: #e68900;
+        }
+        
+        .log-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-top: 20px;
+        }
+        
+        .log-box {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            line-height: 1.5;
+        }
+        
+        .timestamp {
+            color: #ffff00;
+        }
+
+        .current-emotion-display {
+            font-size: 3em;
+            text-align: center;
+            padding: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .confidence-indicator {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <script src="https://sdk.morphcast.com/mphtools/v1.1/mphtools.js" data-config="cameraPrivacyPopup, compatibilityUI, compatibilityAutoCheck"></script>
+    <script src="https://ai-sdk.morphcast.com/v1.16/ai-sdk.js"></script>
+    <script src="https://sdk.morphcast.com/emotion-statistics/v1.0-beta/script.js"></script>
+
+    <div class="container">
+        <div class="debug-panel">
+            <h2>🔧 DEBUG MODE - System Status</h2>
+            <div class="debug-item">
+                <span>MorphCast SDK Loaded:</span>
+                <span id="debugCY" class="debug-status waiting">⏳ Checking...</span>
+            </div>
+            <div class="debug-item">
+                <span>Statistics SDK Loaded:</span>
+                <span id="debugStats" class="debug-status waiting">⏳ Checking...</span>
+            </div>
+            <div class="debug-item">
+                <span>MphTools Loaded:</span>
+                <span id="debugTools" class="debug-status waiting">⏳ Checking...</span>
+            </div>
+            <div class="debug-item">
+                <span>MorphCast Initialized:</span>
+                <span id="debugInit" class="debug-status waiting">⏳ Waiting...</span>
+            </div>
+            <div class="debug-item">
+                <span>Data Receiving:</span>
+                <span id="debugData" class="debug-status waiting">⏳ Waiting...</span>
+            </div>
+            <div class="debug-item">
+                <span>Face Detection Active:</span>
+                <span id="debugFace" class="debug-status waiting">⏳ Waiting...</span>
+            </div>
+            <div class="debug-item">
+                <span>Raw Data Received:</span>
+                <span id="debugRawData" class="debug-status waiting">⏳ Waiting...</span>
+            </div>
+            <div class="debug-item" style="display: block;">
+                <span style="font-weight: bold; margin-bottom: 10px; display: block;">Last Data Object:</span>
+                <pre id="debugDataDisplay" style="background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 11px; max-height: 150px; overflow-y: auto;">Waiting for data...</pre>
+            </div>
+        </div>
+
+        <div class="header">
+            <h1>🎓 Classroom Emotion Tracking System</h1>
+            <p style="color: #666; margin-top: 10px;">Real-time student engagement monitoring</p>
+            <div id="statusBadge" class="status-badge stopped">⏸️ Not Started</div>
+            <div id="timer" style="margin-top: 10px; font-size: 18px; font-weight: 600; color: #667eea;">00:00</div>
+            
+            <div id="faceAlert" class="face-detection-alert">
+                <strong>⚠️ Face Detection Status:</strong>
+                <p id="faceAlertText">Initializing camera...</p>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="card">
+                <h2>📹 Camera Preview</h2>
+                <div style="position: relative; width: 100%; background: #000; border-radius: 10px; overflow: hidden;">
+                    <video id="cameraPreview" autoplay playsinline style="width: 100%; height: auto; display: block;"></video>
+                    <canvas id="faceCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+                </div>
+                <p style="text-align: center; margin-top: 10px; color: #666; font-size: 14px;">
+                    ⬆️ This is what the camera sees
+                </p>
+            </div>
+
+            <div class="card">
+                <h2>📊 Current Emotion</h2>
+                <div id="currentEmotion" class="current-emotion-display">
+                    😐 Neutral
+                </div>
+                <div class="confidence-indicator" id="confidenceLevel">
+                    Waiting for initialization...
+                </div>
+                <div id="emotionBars"></div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Session Statistics</h2>
+                <div class="data-item">
+                    <span class="data-label">Data Points Collected:</span>
+                    <span class="data-value" id="dataCount">0</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Average Attention:</span>
+                    <span class="data-value" id="avgAttention">0%</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Arousal Level:</span>
+                    <span class="data-value" id="arousal">0.0</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Valence Level:</span>
+                    <span class="data-value" id="valence">0.0</span>
+                </div>
+                <div class="data-item">
+                    <span class="data-label">Face Detected:</span>
+                    <span class="data-value" id="faceDetected">❌ No</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <h2 style="margin-bottom: 20px; color: #333;">Session Controls</h2>
+            <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <h3 style="color: #856404; margin-bottom: 10px;">📊 Calibration</h3>
+                <p style="color: #856404; margin-bottom: 10px; font-size: 14px;">
+                    Click "Calibrate Neutral" while keeping a relaxed, neutral face. This helps MorphCast understand YOUR baseline.
+                </p>
+                <button id="calibrateBtn" style="background: #17a2b8;">🎯 Calibrate Neutral Face</button>
+                <span id="calibrationStatus" style="margin-left: 10px; font-weight: bold;"></span>
+            </div>
+            <button id="stopBtn" disabled>⏹️ Stop Session</button>
+            <button id="restartBtn" class="restart-btn">🔄 Restart Session</button>
+            <button id="downloadBtn" class="download-btn" disabled>💾 Download Session Data</button>
+            <button id="clearBtn">🗑️ Clear Data</button>
+        </div>
+
+        <div class="log-container">
+            <h2 style="margin-bottom: 15px; color: #333;">📝 Session Log</h2>
+            <div id="logBox" class="log-box"></div>
+        </div>
+    </div>
+
+    <script>
+        // Debug function
+        function updateDebugStatus(element, status, message) {
+            const el = document.getElementById(element);
+            if (el) {
+                el.textContent = message;
+                el.className = 'debug-status ' + status;
+            }
+        }
+
+        // Check if SDKs are loaded
+        setTimeout(() => {
+            updateDebugStatus('debugCY', typeof CY !== 'undefined' ? 'success' : 'error', 
+                typeof CY !== 'undefined' ? '✅ Loaded' : '❌ Failed');
+            updateDebugStatus('debugStats', typeof MorphCastStatistics !== 'undefined' ? 'success' : 'error', 
+                typeof MorphCastStatistics !== 'undefined' ? '✅ Loaded' : '❌ Failed');
+            updateDebugStatus('debugTools', typeof MphTools !== 'undefined' ? 'success' : 'error', 
+                typeof MphTools !== 'undefined' ? '✅ Loaded' : '❌ Failed');
+        }, 2000);
+
+        // Session data storage
+        let sessionData = {
+            startTime: null,
+            endTime: null,
+            aggregatedData: [],
+            eventBarrierData: [],
+            statistics: {
+                totalDataPoints: 0,
+                emotionCounts: {},
+                avgAttention: 0,
+                avgArousal: 0,
+                avgValence: 0,
+                faceDetectedCount: 0
+            }
+        };
+
+        let startTime = Date.now();
+        let timerInterval = null;
+        let isSessionActive = false;
+        let morphcastInstance = null;
+        let faceDetected = false;
+        let cameraStream = null;
+        let baselineEmotions = null;
+        let isCalibrating = false;
+
+        // Emotion emoji mapping - updated for affects38
+        const emotionEmojis = {
+            'Happy': '😊',
+            'Sad': '😢',
+            'Angry': '😠',
+            'Surprised': '😲',
+            'Afraid': '😨',
+            'Disgusted': '🤢',
+            'Neutral': '😐',
+            'Annoyed': '😒',
+            'Disappointed': '😞',
+            'Apathetic': '😑',
+            'Distressed': '😰',
+            'Delighted': '😄',
+            'Amused': '😆',
+            'Content': '😌',
+            'Calm': '😊'
+        };
+
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                document.getElementById('timer').textContent = 
+                    `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+        }
+
+        function addLog(message) {
+            const logBox = document.getElementById('logBox');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            logBox.appendChild(logEntry);
+            logBox.scrollTop = logBox.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function updateFaceDetectionUI(detected) {
+            faceDetected = detected;
+            const faceAlert = document.getElementById('faceAlert');
+            const faceAlertText = document.getElementById('faceAlertText');
+            const faceDetectedEl = document.getElementById('faceDetected');
+
+            if (detected) {
+                faceAlert.className = 'face-detection-alert show success';
+                faceAlertText.textContent = '✅ Face detected! Emotions are being tracked.';
+                faceDetectedEl.textContent = '✅ Yes';
+                faceDetectedEl.style.color = '#28a745';
+                updateDebugStatus('debugFace', 'success', '✅ Active');
+            } else {
+                faceAlert.className = 'face-detection-alert show';
+                faceAlertText.textContent = '⚠️ No face detected. Please position yourself in front of the camera.';
+                faceDetectedEl.textContent = '❌ No';
+                faceDetectedEl.style.color = '#dc3545';
+                updateDebugStatus('debugFace', 'error', '❌ No Face');
+            }
+        }
+
+        function updateEmotionUI(data) {
+            if (!data || typeof data !== 'object') {
+                addLog('⚠️ Warning: Invalid emotion data received');
+                return;
+            }
+
+            // Extract affects38 emotions from the data
+            const emotions = {};
+            let totalEmotionValue = 0;
+            
+            // Look for affects38_ prefixed emotions
+            Object.keys(data).forEach(key => {
+                if (key.startsWith('affects38_')) {
+                    const emotionName = key.replace('affects38_', '');
+                    const value = data[key].last || data[key].avg || 0;
+                    emotions[emotionName] = value;
+                    totalEmotionValue += value;
+                }
+            });
+
+            // If no affects38 emotions found, look for simple emotion format
+            if (Object.keys(emotions).length === 0 && data.emotion) {
+                Object.assign(emotions, data.emotion);
+                totalEmotionValue = Object.values(data.emotion).reduce((a, b) => a + b, 0);
+            }
+
+            if (Object.keys(emotions).length === 0) {
+                addLog('⚠️ No emotion data found in packet');
+                return;
+            }
+
+            // Apply baseline calibration ONLY if user has calibrated
+            let adjustedEmotions = { ...emotions };
+            if (baselineEmotions) {
+                Object.keys(emotions).forEach(key => {
+                    if (baselineEmotions[key] !== undefined) {
+                        // Subtract 30% of baseline to reduce constant emotions
+                        adjustedEmotions[key] = Math.max(0, emotions[key] - baselineEmotions[key] * 0.3);
+                    }
+                });
+            }
+
+            const emotionBarsContainer = document.getElementById('emotionBars');
+            emotionBarsContainer.innerHTML = '';
+
+            // Show ALL emotions above 1% threshold, sorted by value
+            const sortedEmotions = Object.entries(adjustedEmotions)
+                .filter(([, value]) => value > 0.01) // Show any emotion above 1%
+                .sort(([, a], [, b]) => b - a); // Sort by value, highest first
+
+            let maxEmotion = { name: 'Neutral', value: 0 };
+
+            // Define emotion categories for color coding
+            const positiveEmotions = ['Delighted', 'Amused', 'Content', 'Calm', 'Happy', 'Cheerful', 'Excited', 'Pleased', 'Joyful'];
+            const negativeEmotions = ['Distressed', 'Disappointed', 'Discontented', 'Depressed', 'Afraid', 'Angry', 'Annoyed', 'Sad', 'Fearful'];
+            const neutralEmotions = ['Apathetic', 'Bored', 'Contemplative', 'Pensive'];
+            const activeEmotions = ['Determined', 'Convinced', 'Concentrated', 'Engaged', 'Attentive'];
+
+            sortedEmotions.forEach(([emotion, value]) => {
+                const percentage = (value * 100).toFixed(1);
+                
+                // Color code bars based on emotion type
+                let barColor = '#667eea'; // default blue
+                if (positiveEmotions.includes(emotion)) barColor = '#28a745'; // green
+                else if (negativeEmotions.includes(emotion)) barColor = '#dc3545'; // red
+                else if (activeEmotions.includes(emotion)) barColor = '#ffc107'; // yellow
+                else if (neutralEmotions.includes(emotion)) barColor = '#6c757d'; // gray
+                
+                const barContainer = document.createElement('div');
+                barContainer.innerHTML = `
+                    <div style="margin-bottom: 5px; color: #555; font-weight: 600; font-size: 13px;">${emotion}</div>
+                    <div class="emotion-bar" style="height: 25px;">
+                        <div class="emotion-fill" style="width: ${percentage}%; background: ${barColor}; font-size: 11px;">${percentage}%</div>
+                    </div>
+                `;
+                emotionBarsContainer.appendChild(barContainer);
+
+                if (value > maxEmotion.value) {
+                    maxEmotion = { name: emotion, value: value };
+                }
+            });
+
+            const emoji = emotionEmojis[maxEmotion.name] || '😐';
+            document.getElementById('currentEmotion').textContent = `${emoji} ${maxEmotion.name}`;
+            
+            const confidence = (maxEmotion.value * 100).toFixed(1);
+            const calibrationNote = baselineEmotions ? ' ✅ Calibrated' : ' ⚠️ Not Calibrated';
+            document.getElementById('confidenceLevel').textContent = 
+                `Confidence: ${confidence}%${calibrationNote}`;
+
+            updateFaceDetectionUI(totalEmotionValue > 0.1);
+        }
+
+        function updateStatistics() {
+            const stats = sessionData.statistics;
+            document.getElementById('dataCount').textContent = stats.totalDataPoints;
+            document.getElementById('avgAttention').textContent = `${stats.avgAttention.toFixed(1)}%`;
+            document.getElementById('arousal').textContent = stats.avgArousal.toFixed(2);
+            document.getElementById('valence').textContent = stats.avgValence.toFixed(2);
+        }
+
+        // Initialize camera preview
+        async function startCameraPreview() {
+            try {
+                addLog('📹 Starting camera preview...');
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    } 
+                });
+                
+                const video = document.getElementById('cameraPreview');
+                video.srcObject = stream;
+                cameraStream = stream;
+                
+                addLog('✅ Camera preview started');
+                updateDebugStatus('debugCamera', 'success', '✅ Active');
+                
+                return true;
+            } catch (error) {
+                addLog(`❌ Camera preview error: ${error.message}`);
+                updateDebugStatus('debugCamera', 'error', '❌ Failed');
+                console.error('Camera error:', error);
+                return false;
+            }
+        }
+
+        async function initializeMorphCast() {
+            try {
+                // Start camera preview first
+                const cameraStarted = await startCameraPreview();
+                if (!cameraStarted) {
+                    addLog('❌ Cannot proceed without camera access');
+                    return;
+                }
+
+                addLog('🚀 Initializing MorphCast SDK...');
+                
+                const statsConfig = {
+                    sendDatainterval: 5000,
+                    tickInterval: 1000,
+                    stopAfter: 1800000,
+                    licenseKey: "skb2bb0f999e20cff47b4d233e1d1e231072e75d019f94"
+                };
+
+                const statisticsUploader = new MorphCastStatistics.StatisticsUploader(statsConfig);
+
+                morphcastInstance = await CY.loader()
+                    .licenseKey("skb2bb0f999e20cff47b4d233e1d1e231072e75d019f94")
+                    .addModule(CY.modules().FACE_AROUSAL_VALENCE.name, {smoothness: 0.70})
+                    .addModule(CY.modules().FACE_EMOTION.name, {smoothness: 0.40})
+                    .addModule(CY.modules().FACE_ATTENTION.name, {smoothness: 0.83})
+                    .addModule(CY.modules().DATA_AGGREGATOR.name, {initialWaitMs: 2000, periodMs: 1000})
+                    .load();
+
+                updateDebugStatus('debugInit', 'success', '✅ Success');
+                sessionData.startTime = new Date().toISOString();
+                isSessionActive = true;
+                
+                await morphcastInstance.start();
+                await statisticsUploader.start();
+                
+                addLog('✅ MorphCast session started successfully');
+                addLog('📹 Look at the camera preview - make sure your face is clearly visible');
+                addLog('💡 TIP: Try making exaggerated facial expressions (big smile, surprised face, etc.)');
+                
+                document.getElementById('statusBadge').textContent = '🟢 Active';
+                document.getElementById('statusBadge').className = 'status-badge active';
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('faceAlert').classList.add('show');
+                
+                startTimer();
+
+                morphcastInstance.stopSession = async () => {
+                    await statisticsUploader.stop();
+                    await morphcastInstance.stop();
+                    if (cameraStream) {
+                        cameraStream.getTracks().forEach(track => track.stop());
+                    }
+                };
+
+                setTimeout(async () => {
+                    if (isSessionActive) {
+                        await morphcastInstance.stopSession();
+                        stopTimer();
+                        sessionData.endTime = new Date().toISOString();
+                        isSessionActive = false;
+                        
+                        addLog('⏹️ Session stopped automatically after 30 minutes');
+                        document.getElementById('statusBadge').textContent = '🔴 Stopped';
+                        document.getElementById('statusBadge').className = 'status-badge stopped';
+                        document.getElementById('stopBtn').disabled = true;
+                        document.getElementById('downloadBtn').disabled = false;
+                    }
+                }, statsConfig.stopAfter);
+
+            } catch (error) {
+                addLog(`❌ Error initializing MorphCast: ${error.message}`);
+                updateDebugStatus('debugInit', 'error', '❌ Failed');
+                console.error('MorphCast initialization error:', error);
+            }
+        }
+
+        window.addEventListener(CY.modules().EVENT_BARRIER.eventName, (evt) => {
+            try {
+                console.log('EVENT_BARRIER result', evt.detail);
+                sessionData.eventBarrierData.push({
+                    timestamp: new Date().toISOString(),
+                    data: evt.detail
+                });
+            } catch (error) {
+                console.error('Error processing EVENT_BARRIER:', error);
+            }
+        });
+
+        window.addEventListener(CY.modules().DATA_AGGREGATOR.eventName, (evt) => {
+            try {
+                console.log('DATA_AGGREGATOR Full Event:', evt);
+                console.log('DATA_AGGREGATOR detail:', evt.detail);
+                
+                updateDebugStatus('debugData', 'success', '✅ Receiving');
+                
+                // Show raw data in debug panel
+                const debugDisplay = document.getElementById('debugDataDisplay');
+                if (debugDisplay) {
+                    debugDisplay.textContent = JSON.stringify(evt.detail, null, 2);
+                }
+                updateDebugStatus('debugRawData', 'success', '✅ Check below');
+                
+                if (!evt.detail) {
+                    addLog('⚠️ Warning: evt.detail is null or undefined');
+                    return;
+                }
+
+                const data = evt.detail;
+                
+                addLog(`✅ Received data with ${Object.keys(data).length} properties`);
+                
+                sessionData.aggregatedData.push({
+                    timestamp: new Date().toISOString(),
+                    data: data
+                });
+                
+                sessionData.statistics.totalDataPoints++;
+                
+                // Process the emotion data (affects38 format)
+                updateEmotionUI(data);
+                
+                // Count emotions for statistics
+                Object.keys(data).forEach(key => {
+                    if (key.startsWith('affects38_')) {
+                        const emotionName = key.replace('affects38_', '');
+                        sessionData.statistics.emotionCounts[emotionName] = 
+                            (sessionData.statistics.emotionCounts[emotionName] || 0) + 1;
+                    }
+                });
+
+                if (faceDetected) {
+                    sessionData.statistics.faceDetectedCount++;
+                }
+                
+                // Process arousal and valence
+                if (data.arousal && typeof data.arousal === 'object') {
+                    const arousal = data.arousal.last || data.arousal.avg || 0;
+                    
+                    sessionData.statistics.avgArousal = 
+                        ((sessionData.statistics.avgArousal * (sessionData.statistics.totalDataPoints - 1)) + arousal) / 
+                        sessionData.statistics.totalDataPoints;
+                }
+                
+                if (data.valence && typeof data.valence === 'object') {
+                    const valence = data.valence.last || data.valence.avg || 0;
+                    
+                    sessionData.statistics.avgValence = 
+                        ((sessionData.statistics.avgValence * (sessionData.statistics.totalDataPoints - 1)) + valence) / 
+                        sessionData.statistics.totalDataPoints;
+                }
+                
+                // Process attention if it exists
+                if (data.attention && typeof data.attention === 'object') {
+                    const attentionValue = data.attention.last || data.attention.avg || 0;
+                    sessionData.statistics.avgAttention = 
+                        ((sessionData.statistics.avgAttention * (sessionData.statistics.totalDataPoints - 1)) + 
+                        (attentionValue * 100)) / sessionData.statistics.totalDataPoints;
+                }
+                
+                updateStatistics();
+                
+            } catch (error) {
+                addLog(`❌ Error processing data: ${error.message}`);
+                console.error('Error in DATA_AGGREGATOR handler:', error);
+                console.error('Error stack:', error.stack);
+            }
+        });
+
+        if (typeof MphTools !== 'undefined' && MphTools.CameraPrivacyPopup) {
+            MphTools.CameraPrivacyPopup.setText({
+                "title": "Allow us to use your camera",
+                "description": "This classroom emotion tracking system needs camera access to analyze student engagement.",
+                "url": "https://YOUR_DOMAIN/privacy-policy"
+            });
+        }
+
+        // Calibration button
+        document.getElementById('calibrateBtn').onclick = () => {
+            if (!isSessionActive) {
+                alert('Please wait for the session to start before calibrating.');
+                return;
+            }
+            
+            isCalibrating = true;
+            let calibrationData = [];
+            const statusEl = document.getElementById('calibrationStatus');
+            statusEl.textContent = '⏳ Calibrating... (5 seconds)';
+            statusEl.style.color = '#0c5460';
+            
+            addLog('🎯 Starting calibration - please keep a neutral, relaxed face...');
+            
+            // Collect data for 5 seconds
+            const calibrationInterval = setInterval(() => {
+                if (sessionData.aggregatedData.length > 0) {
+                    const latestData = sessionData.aggregatedData[sessionData.aggregatedData.length - 1].data;
+                    calibrationData.push(latestData);
+                }
+            }, 200);
+            
+            setTimeout(() => {
+                clearInterval(calibrationInterval);
+                isCalibrating = false;
+                
+                if (calibrationData.length > 0) {
+                    // Calculate average baseline emotions
+                    baselineEmotions = {};
+                    
+                    calibrationData.forEach(data => {
+                        Object.keys(data).forEach(key => {
+                            if (key.startsWith('affects38_')) {
+                                const emotionName = key.replace('affects38_', '');
+                                const value = data[key].last || data[key].avg || 0;
+                                baselineEmotions[emotionName] = (baselineEmotions[emotionName] || 0) + value;
+                            }
+                        });
+                    });
+                    
+                    // Average the values
+                    Object.keys(baselineEmotions).forEach(key => {
+                        baselineEmotions[key] = baselineEmotions[key] / calibrationData.length;
+                    });
+                    
+                    statusEl.textContent = '✅ Calibrated!';
+                    statusEl.style.color = '#155724';
+                    addLog('✅ Calibration complete! Now your emotions should be more accurate.');
+                    addLog('💡 Try smiling, looking surprised, or sad - emotions should change!');
+                } else {
+                    statusEl.textContent = '❌ Failed - no data';
+                    statusEl.style.color = '#721c24';
+                    addLog('❌ Calibration failed - no data received');
+                }
+            }, 5000);
+        };
+
+        document.getElementById('stopBtn').onclick = async () => {
+            if (morphcastInstance && isSessionActive) {
+                await morphcastInstance.stopSession();
+                stopTimer();
+                sessionData.endTime = new Date().toISOString();
+                isSessionActive = false;
+                
+                addLog('⏹️ Session stopped manually');
+                document.getElementById('statusBadge').textContent = '🔴 Stopped';
+                document.getElementById('statusBadge').className = 'status-badge stopped';
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('downloadBtn').disabled = false;
+            }
+        };
+
+        document.getElementById('restartBtn').onclick = async () => {
+            if (isSessionActive && morphcastInstance) {
+                await morphcastInstance.stopSession();
+                stopTimer();
+                addLog('🔄 Restarting session...');
+            }
+            
+            // Stop camera stream
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            
+            sessionData = {
+                startTime: null,
+                endTime: null,
+                aggregatedData: [],
+                eventBarrierData: [],
+                statistics: {
+                    totalDataPoints: 0,
+                    emotionCounts: {},
+                    avgAttention: 0,
+                    avgArousal: 0,
+                    avgValence: 0,
+                    faceDetectedCount: 0
+                }
+            };
+            
+            updateStatistics();
+            document.getElementById('currentEmotion').textContent = '😐 Neutral';
+            document.getElementById('confidenceLevel').textContent = 'Restarting...';
+            document.getElementById('emotionBars').innerHTML = '';
+            document.getElementById('downloadBtn').disabled = true;
+            
+            setTimeout(() => {
+                initializeMorphCast();
+            }, 1000);
+        };
+
+        document.getElementById('downloadBtn').onclick = () => {
+            const dataStr = JSON.stringify(sessionData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `classroom-session-${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            addLog('💾 Session data downloaded successfully');
+        };
+
+        document.getElementById('clearBtn').onclick = () => {
+            if (confirm('Are you sure you want to clear all session data?')) {
+                sessionData = {
+                    startTime: null,
+                    endTime: null,
+                    aggregatedData: [],
+                    eventBarrierData: [],
+                    statistics: {
+                        totalDataPoints: 0,
+                        emotionCounts: {},
+                        avgAttention: 0,
+                        avgArousal: 0,
+                        avgValence: 0,
+                        faceDetectedCount: 0
+                    }
+                };
+                updateStatistics();
+                document.getElementById('logBox').innerHTML = '';
+                document.getElementById('currentEmotion').textContent = '😐 Neutral';
+                document.getElementById('confidenceLevel').textContent = 'Data cleared';
+                document.getElementById('emotionBars').innerHTML = '';
+                addLog('🗑️ Session data cleared');
+            }
+        };
+
+        addLog('🚀 Classroom Emotion Tracker initialized');
+        addLog('📋 Preparing to start MorphCast...');
+        
+        setTimeout(() => {
+            initializeMorphCast();
+        }, 1000);
+    </script>
+</body>
+</html>
